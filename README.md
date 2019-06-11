@@ -1,5 +1,12 @@
 # the-ultimate-tile-stitcher
 
+
+example:
+
+
+python3 scraper.py --poly everest.geojson --zoom 10 --url "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png" --out-dir elevation
+
+
 It can scrape things for you and stitch them for you too.
 
 If you're on windows, run `conda install -c conda-forge shapely`

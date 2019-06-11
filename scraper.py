@@ -50,13 +50,20 @@ async def fetch_and_save(session : aiohttp.ClientSession, url : str, retries : i
         try:
             response.raise_for_status()
             img = await response.read()
+            if not os.path.exists(os.path.dirname(filepath)):
+                try:
+                    os.makedirs(os.path.dirname(filepath))
+                except OSError as exc: # Guard against race condition
+                    if exc.errno != errno.EEXIST:
+                        raise
             with open(filepath, 'wb') as fp:
                 fp.write(img)
             return True
-        except aiohttp.client_exceptions.ClientResponseError:
-            print('err')
-            await asyncio.sleep(wait_for)
-            wait_for = wait_for * (1.0 * random() + 1.0)
+        except aiohttp.client_exceptions.ClientResponseError as e:
+            print(url)
+            print(str(e))
+            # await asyncio.sleep(wait_for)
+            # wait_for = wait_for * (1.0 * random() + 1.0)
     return False
 
 async def main():
@@ -71,13 +78,13 @@ async def main():
     for feat in opts.poly['features']:
         poly = shapely.geometry.shape(feat['geometry'])
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
             tasks = []
             urls = []
             for x, y in tile_idxs_in_poly(poly, opts.zoom):
                 url = opts.url.format(z=opts.zoom, x=x, y=y)
                 with (await semaphore):
-                    filepath = os.path.join(opts.out_dir, '{}_{}_{}.png'.format(opts.zoom, x, y))
+                    filepath = os.path.join(opts.out_dir, '{}/{}/{}.png'.format(opts.zoom, x, y))
                     if os.path.isfile(filepath):
                         continue
                     ret = fetch_and_save(session, url, opts.retries, filepath)
